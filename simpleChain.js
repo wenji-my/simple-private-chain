@@ -1,7 +1,7 @@
 /* ===== SHA256 with Crypto-js ===============================
 |  Learn more: Crypto-js: https://github.com/brix/crypto-js  |
 |  =========================================================*/
-
+'use strict';
 const SHA256 = require('crypto-js/sha256');
 const levelSandbox = require('./levelSandbox')
 
@@ -30,7 +30,7 @@ class Blockchain{
   }
 
   // Add new block
-  addBlock(newBlock){
+  async addBlock(newBlock){
     // Block height
     newBlock.height = this.chain.length;
     // UTC timestamp
@@ -44,31 +44,29 @@ class Blockchain{
     // Adding block object to chain
     this.chain.push(newBlock);
     if (this.chain.length>0) {
-      return levelSandbox.addDataToLevelDB(newBlock.height,JSON.stringify(newBlock).toString())
+      return await levelSandbox.addDataToLevelDB(newBlock.height,JSON.stringify(newBlock).toString())
     }else {
-      return levelSandbox.addDataToLevelDB(0,JSON.stringify(newBlock).toString())
+      return await levelSandbox.addDataToLevelDB(0,JSON.stringify(newBlock).toString())
     }
   }
 
   // Get block height
-    getBlockHeight(){
-      return levelSandbox.getDataArray().then(res => {
-        this.chain = res
-        return this.chain.length-1;
-      })
+    async getBlockHeight(){
+      let blockchain = await levelSandbox.getDataArray()
+      return blockchain.length - 1;
     }
 
     // get block
-    getBlock(blockHeight){
+    async getBlock(blockHeight){
       // return object as a single string
-      // return JSON.parse(JSON.stringify(this.chain[blockHeight]));
-      return JSON.parse(levelSandbox.getLevelDBData(blockHeight))
+      let blockJson = await levelSandbox.getLevelDBData(blockHeight)
+      return JSON.parse(blockJson);
     }
 
     // validate block
-    validateBlock(blockHeight){
+    async validateBlock(blockHeight){
       // get block object
-      let block = this.getBlock(blockHeight);
+      let block = await this.getBlock(blockHeight);
       // get block hash
       let blockHash = block.hash;
       // remove block hash to test block integrity
@@ -85,40 +83,37 @@ class Blockchain{
     }
 
    // Validate blockchain
-    validateChain(){
+    async validateChain(){
       // get chain within the LevelDB
-      levelSandbox.getDataArray().then(res => {
-        this.chain = res
-        let errorLog = [];
-        for (var i = 0; i < this.chain.length-1; i++) {
-          // validate block
-          if (!this.validateBlock(i))errorLog.push(i);
-          // compare blocks hash link
-          let blockHash = this.chain[i].hash;
-          let previousHash = this.chain[i+1].previousBlockHash;
-          if (blockHash!==previousHash) {
-            errorLog.push(i);
-          }
+      this.chain = await levelSandbox.getDataArray();
+      let errorLog = [];
+      for (var i = 0; i < this.chain.length-1; i++) {
+        // validate block
+        if (!this.validateBlock(i))errorLog.push(i);
+        // compare blocks hash link
+        let blockHash = this.chain[i].hash;
+        let previousHash = this.chain[i+1].previousBlockHash;
+        if (blockHash!==previousHash) {
+          errorLog.push(i);
         }
-        if (errorLog.length>0) {
-          console.log('Block errors = ' + errorLog.length);
-          console.log('Blocks: '+errorLog);
-        } else {
-          console.log('No errors detected');
-        }
-      })
+      }
+      if (errorLog.length>0) {
+        console.log('Block errors = ' + errorLog.length);
+        console.log('Blocks: '+errorLog);
+      } else {
+        console.log('No errors detected');
+      }
     }
 }
 
 let myBlockChain = new Blockchain();
-(function theLoop(i) {
-  setTimeout(() => {
+(async function theLoop(i) {
+  setTimeout(async () => {
     let blockTest = new Block("Test Block - " + (i + 1));
-    myBlockChain.addBlock(blockTest).then(res => {
-      console.log(res)
-      i++;
-      if (i < 10) theLoop(i);
-    })
+    let chainArray = await myBlockChain.addBlock(blockTest)
+    console.log(chainArray);
+    i++;
+    if (i < 10) theLoop(i);
   }, 100);
 })(0);
 

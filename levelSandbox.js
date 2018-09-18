@@ -14,11 +14,8 @@ function addLevelDBData(key,value){
 }
 
 // Get data from levelDB with key
-function getLevelDBData(key){
-  db.get(key, function(err, value) {
-    if (err) return console.log('Not found!', err);
-    console.log('Value = ' + value);
-  })
+async function getLevelDBData(key){
+  return await db.get(key)
 }
 // Add data to levelDB with value
 function addDataToLevelDB(key, value) {
@@ -48,7 +45,6 @@ function getDataArray() {
         }).on('close', function() {
           resolve(dataArray)
         });
-    
   })
 }
 
